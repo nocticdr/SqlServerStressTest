@@ -71,5 +71,6 @@ logs
 *.log
 
 .nexops_import_env
-diskIO_Wiki.md
-SqlCPU_Wiki.md
+
+*diskIO_Wiki.md*
+*SqlCPU_Wiki.md*
