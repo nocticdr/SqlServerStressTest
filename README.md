@@ -1,29 +1,66 @@
-# SQL Server CPU Stress Test - Quick Reference
+# SQL Server Load Testing Tools
 
-Please refer to the Wiki.md for detailed documentation.
+Quick reference for testing SQL Server performance with CPU and Disk I/O load generators.
 
-## TL;DR
+## 🚀 Quick Start
 
-A safe PowerShell script that increases SQL Server CPU to test monitoring, alerts, and auto-scaling. Auto-stops after time limit. Press Ctrl+C to stop anytime.
-
-**Default:** 70% CPU for 5 minutes on localhost  
-**Safety:** Capped at 95%, read-only queries, automatic cleanup  
-**Database:** Uses tempdb by default (safe)
-
-## Quick Start
-
+### CPU Load Testing
 ```powershell
-# Download and run with defaults
-.\Stress-SqlCpu.ps1
+# Basic CPU test: 70% for 5 minutes
+.\Invoke-SqlServerCpuStress.ps1
 
-# Custom target
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 90 -DurationMinutes 10
-
-# Stop anytime
-Press Ctrl+C
+# High load test: 90% for 10 minutes
+.\Invoke-SqlServerCpuStress.ps1 -TargetCpuPercent 90 -DurationMinutes 10
 ```
 
-## Parameter Quick Reference
+### Disk I/O Load Testing
+```powershell
+# Basic disk test: Mixed I/O, 1GB files, 4 threads, 5 minutes
+.\Invoke-SqlServerDiskStress.ps1
+
+# Heavy write test: 8 threads, 2GB files, 10 minutes
+.\Invoke-SqlServerDiskStress.ps1 -TargetIOType Write -FileSizeGB 2 -ThreadCount 8 -DurationMinutes 10
+```
+
+## 🛠️ Tool Overview
+
+| Tool | Purpose | Default Settings | Safety Features |
+|------|---------|------------------|-----------------|
+| **SQL CPU Load Generator** | Test CPU utilization, monitoring alerts, auto-scaling | 70% CPU, 5 min, localhost | 95% cap, auto-stop, read-only |
+| **SQL Disk I/O Load Generator** | Test disk performance, storage alerts, backup performance | Mixed I/O, 1GB files, 4 threads, 5 min | Space validation, auto-cleanup, isolated testing |
+
+## 📋 Common Use Cases
+
+### Monitoring & Alerting
+```powershell
+# Test CPU monitoring (70% threshold)
+.\Invoke-SqlServerCpuStress.ps1 -TargetCpuPercent 75 -DurationMinutes 5
+
+# Test disk I/O monitoring
+.\Invoke-SqlServerDiskStress.ps1 -TargetIOType Write -ThreadCount 8 -DurationMinutes 10
+```
+
+### Auto-Scaling Validation
+```powershell
+# Trigger CPU auto-scaling
+.\Invoke-SqlServerCpuStress.ps1 -TargetCpuPercent 85 -DurationMinutes 20
+
+# Test storage scaling
+.\Invoke-SqlServerDiskStress.ps1 -TargetIOType Mixed -ThreadCount 16 -DurationMinutes 15
+```
+
+### Performance Baselines
+```powershell
+# CPU baseline
+.\Invoke-SqlServerCpuStress.ps1 -TargetCpuPercent 60 -DurationMinutes 10
+
+# Disk baseline
+.\Invoke-SqlServerDiskStress.ps1 -TargetIOType Mixed -BlockSizeKB 64 -DurationMinutes 15
+```
+
+## ⚙️ Quick Parameter Reference
+
+### CPU Load Generator Parameters
 
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
@@ -33,68 +70,84 @@ Press Ctrl+C
 | `-Database` | String | tempdb | - | Database to use (tempdb recommended) |
 | `-EmergencyStopFile` | String | STOP_SQL_STRESS.txt | - | Create this file to stop instantly |
 
-## Common Commands
+### Disk I/O Load Generator Parameters
 
-| Scenario | Command |
-|----------|---------|
-| **Basic test** | `.\Stress-SqlCpu.ps1` |
-| **High CPU test** | `.\Stress-SqlCpu.ps1 -TargetCpuPercent 90` |
-| **Quick 2-minute test** | `.\Stress-SqlCpu.ps1 -DurationMinutes 2` |
-| **Remote server** | `.\Stress-SqlCpu.ps1 -SqlInstance "SERVER\INSTANCE"` |
-| **Full custom** | `.\Stress-SqlCpu.ps1 -TargetCpuPercent 85 -DurationMinutes 15 -SqlInstance "SQLSERVER01"` |
+| Parameter | Type | Default | Range | Description |
+|-----------|------|---------|-------|-------------|
+| `-TargetIOType` | String | Mixed | Read/Write/Mixed | Type of I/O operations |
+| `-DurationMinutes` | Integer | 5 | 1-120 | How long to run (auto-stops) |
+| `-TestPath` | String | C:\DiskStressTest | - | Directory for test files |
+| `-FileSizeGB` | Double | 1 | 0.1-100 | Size of each test file |
+| `-ThreadCount` | Integer | 4 | 1-16 | Number of parallel I/O threads |
+| `-BlockSizeKB` | Integer | 64 | 4-1024 | I/O block size in KB |
+| `-EmergencyStopFile` | String | STOP_DISK_STRESS.txt | - | Create this file to stop instantly |
 
-## Stop Methods
+## 🎯 Example Scenarios
+
+### Test Monitoring Alert (70% threshold)
+```powershell
+.\Invoke-SqlServerCpuStress.ps1 -TargetCpuPercent 75 -DurationMinutes 5
+```
+
+### Test Critical Alert (90% threshold)
+```powershell
+.\Invoke-SqlServerCpuStress.ps1 -TargetCpuPercent 90 -DurationMinutes 10
+```
+
+### Test Database Workload (OLTP simulation)
+```powershell
+.\Invoke-SqlServerDiskStress.ps1 -TargetIOType Mixed -BlockSizeKB 8 -ThreadCount 8 -FileSizeGB 2 -DurationMinutes 15
+```
+
+### Test Backup Performance
+```powershell
+.\Invoke-SqlServerDiskStress.ps1 -TargetIOType Write -BlockSizeKB 256 -ThreadCount 4 -FileSizeGB 5 -DurationMinutes 20
+```
+
+### Remote SQL Server Testing
+```powershell
+# CPU test on remote server
+.\Invoke-SqlServerCpuStress.ps1 -TargetCpuPercent 80 -SqlInstance "192.168.1.50" -DurationMinutes 10
+
+# Disk test on different drive
+.\Invoke-SqlServerDiskStress.ps1 -TestPath "D:\IOTest" -ThreadCount 8 -DurationMinutes 15
+```
+
+## 🛑 Stop Methods
 
 | Method | How | When to Use |
 |--------|-----|-------------|
 | **Ctrl+C** | Press `Ctrl+C` in PowerShell window | ✅ Recommended - cleanest stop |
-| **Emergency File** | `New-Item -Path "STOP_SQL_STRESS.txt" -ItemType File` | For remote/automated stops |
+| **Emergency File** | `New-Item -Path "STOP_*.txt" -ItemType File` | For remote/automated stops |
 | **Wait** | Do nothing | Auto-stops after duration |
 
-## Example Scenarios
+## 🔒 Safety Features
 
-### 🎯 Test Monitoring Alert (70% threshold)
-```powershell
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 75 -DurationMinutes 5
-```
+### CPU Load Generator
+- ✅ 95% CPU cap (prevents system lockup)
+- ✅ Auto-stop timer (can't run forever)
+- ✅ Emergency stop file (instant remote stop)
+- ✅ Ctrl+C handler (graceful shutdown)
+- ✅ Auto cleanup (closes all connections)
+- ✅ Uses tempdb (no production data risk)
+- ✅ Read-only queries (can't modify data)
 
-### 🚨 Test Critical Alert (90% threshold)
-```powershell
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 90 -DurationMinutes 10
-```
+### Disk I/O Load Generator
+- ✅ Disk space validation (checks available space)
+- ✅ 20% buffer requirement (ensures disk won't fill)
+- ✅ Time-based auto-stop (maximum 120 minutes)
+- ✅ Emergency stop file (instant stop)
+- ✅ Ctrl+C handler (graceful shutdown)
+- ✅ Automatic cleanup (removes all test files)
+- ✅ Thread limits (maximum 16 threads)
+- ✅ Isolated test directory (files in dedicated folder)
 
-### 🔄 Test Auto-Scaling
-```powershell
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 85 -DurationMinutes 20
-```
+## 📊 What You'll See
 
-### 🌐 Remote SQL Server
-```powershell
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 80 -SqlInstance "192.168.1.50" -DurationMinutes 10
-```
-
-### ⚡ Quick Load Spike Test
-```powershell
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 95 -DurationMinutes 2
-```
-
-### 📊 Progressive Load Test
-```powershell
-# Step 1: Baseline
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 50 -DurationMinutes 5
-
-# Step 2: Medium
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 70 -DurationMinutes 5
-
-# Step 3: High
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 90 -DurationMinutes 5
-```
-
-## What You'll See
-
+### CPU Load Generator Output
 ```
 ========================================
-SQL Server CPU Stress Test
+SQL Server CPU Load Generator
 ========================================
 Target CPU:     90%
 Duration:       10 minutes
@@ -106,35 +159,97 @@ SQL Instance:   localhost
 [14:30:35] SQL CPU: 91.2% | Target: 90% | Elapsed: 0.3 min | Remaining: 9.7 min
 ```
 
+### Disk I/O Load Generator Output
+```
+========================================
+SQL Server Disk I/O Load Generator
+========================================
+I/O Type:       Mixed
+Duration:       10 minutes
+Test Path:      C:\DiskStressTest
+File Size:      1 GB per file
+Thread Count:   4
+========================================
+
+[14:30:30] IOPS: 1247 (R: 623 W: 624) | Elapsed: 0.1 min | Remaining: 9.9 min | Threads: 4
+[14:30:35] IOPS: 1389 (R: 701 W: 688) | Elapsed: 0.2 min | Remaining: 9.8 min | Threads: 4
+```
+
 **Color Indicators:**
-- 🟢 Green = Within 5% of target (good)
-- 🟡 Yellow = Within 15% of target (ok)
-- 🔴 Red = More than 15% below (ramping up)
+- 🟢 Green = Good performance (CPU within 5% of target, IOPS ≥ 100)
+- 🟡 Yellow = Acceptable performance (CPU within 15% of target, IOPS 50-99)
+- 🔴 Red = Ramping up (CPU >15% below target, IOPS < 50)
 
-## Safety Features Summary
+## ⚡ Quick Commands Cheat Sheet
 
-| Feature | Purpose |
-|---------|---------|
-| ✅ 95% CPU cap | Prevents system lockup |
-| ✅ Auto-stop timer | Can't run forever |
-| ✅ Emergency stop file | Instant remote stop |
-| ✅ Ctrl+C handler | Graceful shutdown |
-| ✅ Auto cleanup | Closes all connections |
-| ✅ Uses tempdb | No production data risk |
-| ✅ Read-only queries | Can't modify data |
-| ✅ Connection test | Validates before starting |
+### CPU Load Generator
+```powershell
+# Basic
+.\Invoke-SqlServerCpuStress.ps1
 
-## Quick Troubleshooting
+# High load
+.\Invoke-SqlServerCpuStress.ps1 -TargetCpuPercent 90
+
+# Quick test
+.\Invoke-SqlServerCpuStress.ps1 -DurationMinutes 2
+
+# Remote server
+.\Invoke-SqlServerCpuStress.ps1 -SqlInstance "SERVER01"
+
+# Full control
+.\Invoke-SqlServerCpuStress.ps1 -TargetCpuPercent 85 -DurationMinutes 15 -SqlInstance "PROD-SQL\INSTANCE"
+```
+
+### Disk I/O Load Generator
+```powershell
+# Basic
+.\Invoke-SqlServerDiskStress.ps1
+
+# High write load
+.\Invoke-SqlServerDiskStress.ps1 -TargetIOType Write -ThreadCount 8
+
+# Quick test
+.\Invoke-SqlServerDiskStress.ps1 -DurationMinutes 2
+
+# Different drive
+.\Invoke-SqlServerDiskStress.ps1 -TestPath "D:\Test"
+
+# Full control
+.\Invoke-SqlServerDiskStress.ps1 -TargetIOType Mixed -ThreadCount 8 -FileSizeGB 5 -DurationMinutes 20 -TestPath "E:\StressTest"
+```
+
+## 🚨 Emergency Stop
+
+### Stop CPU Load Generator
+```powershell
+# Method 1: Ctrl+C (recommended)
+# Press Ctrl+C in the PowerShell window
+
+# Method 2: Emergency file
+New-Item -Path "STOP_SQL_STRESS.txt" -ItemType File
+```
+
+### Stop Disk I/O Load Generator
+```powershell
+# Method 1: Ctrl+C (recommended)
+# Press Ctrl+C in the PowerShell window
+
+# Method 2: Emergency file
+New-Item -Path "STOP_DISK_STRESS.txt" -ItemType File
+```
+
+## 🔧 Quick Troubleshooting
 
 | Problem | Quick Fix |
 |---------|-----------|
-| **Can't connect** | Check SQL Server is running: `Get-Service MSSQLSERVER` |
-| **CPU too low** | Try higher target or fewer workers running |
+| **Can't connect to SQL** | Check SQL Server is running: `Get-Service MSSQLSERVER` |
+| **CPU too low** | Try higher target or check for other processes |
 | **Permission error** | Run PowerShell as Administrator |
 | **Script won't run** | Set execution policy: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` |
-| **Workers still running** | Kill jobs: `Get-Job \| Stop-Job; Get-Job \| Remove-Job -Force` |
+| **Insufficient disk space** | Reduce file size or use different drive |
+| **Low IOPS** | Reduce thread count for HDDs, check for disk bottlenecks |
 
-## Pre-Flight Checklist
+## 📋 Pre-Flight Checklist
 
 Before running in production:
 
@@ -142,155 +257,39 @@ Before running in production:
 - [ ] Monitoring tools are open (SSMS, alerts)
 - [ ] DBA approval obtained (if required)
 - [ ] Duration is reasonable (5-15 min typical)
-- [ ] Target CPU won't cause issues (<90% recommended)
+- [ ] Target won't cause issues (<90% CPU recommended)
 - [ ] Know how to stop it (Ctrl+C)
 - [ ] Not during peak business hours
+- [ ] Sufficient disk space available (for disk tests)
 
-## One-Liner Cheat Sheet
+## 📖 Detailed Documentation
 
-```powershell
-# Basic
-.\Stress-SqlCpu.ps1
+For comprehensive documentation, advanced usage examples, troubleshooting guides, and best practices, see:
 
-# High load
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 90
+**[📚 SQL Server Load Testing Wiki](SqlServer-StressTesting-Wiki.md)**
 
-# Quick test
-.\Stress-SqlCpu.ps1 -DurationMinutes 2
+## 🎯 When to Use Each Tool
 
-# Remote server
-.\Stress-SqlCpu.ps1 -SqlInstance "SERVER01"
+| Scenario | Tool | Settings |
+|----------|------|----------|
+| **Monitor alert test** | CPU Load Generator | 70-80% CPU, 5 min |
+| **Critical alert test** | CPU Load Generator | 90-95% CPU, 5-10 min |
+| **Auto-scaling test** | CPU Load Generator | 85-90% CPU, 15-20 min |
+| **Database read performance** | Disk I/O Load Generator | Read, 8KB blocks, 8 threads |
+| **Database write performance** | Disk I/O Load Generator | Write, 8KB blocks, 8 threads |
+| **Backup performance** | Disk I/O Load Generator | Write, 256KB blocks, 4 threads |
+| **General disk performance** | Disk I/O Load Generator | Mixed, 64KB blocks, 4-8 threads |
 
-# Full control
-.\Stress-SqlCpu.ps1 -TargetCpuPercent 85 -DurationMinutes 15 -SqlInstance "PROD-SQL\INSTANCE"
+## ⚠️ Important Notes
 
-# Stop immediately
-# Press Ctrl+C or:
-New-Item -Path "STOP_SQL_STRESS.txt" -ItemType File
-```
-
-## Performance Impact
-
-| Metric | Impact |
-|--------|--------|
-| **CPU** | ⬆️ High (by design) |
-| **Memory** | ⬇️ Low (~100-200 MB) |
-| **Disk I/O** | ⬇️ Minimal |
-| **Network** | ⬇️ Minimal |
-| **Table Locks** | ⬇️ None |
-| **Data Changes** | ⬇️ None (read-only) |
-
-## When to Use
-
-| Use Case | Target CPU | Duration |
-|----------|-----------|----------|
-| Monitor alert test | 70-80% | 5 min |
-| Critical alert test | 90-95% | 5-10 min |
-| Auto-scaling test | 85-90% | 15-20 min |
-| Performance baseline | 60-70% | 10-15 min |
-| Quick spike test | 90-95% | 2-3 min |
-| Sustained load test | 75-85% | 20-30 min |
-
-## What It Does NOT Do
-
-❌ Modify any data  
-❌ Create/drop tables  
-❌ Lock tables  
-❌ Use excessive memory  
-❌ Run forever  
-❌ Harm your database  
-❌ Require special permissions (basic read access)  
-
-## Monitoring While Running
-
-**SQL Server Management Studio:**
-1. Open Activity Monitor (Alt+Ctrl+A)
-2. Watch Processes tab
-3. Check Resource Waits tab
-
-**Performance Monitor (perfmon):**
-- Processor: % Processor Time
-- SQL Server: SQL Statistics\Batch Requests/sec
-- SQL Server: SQL Statistics\SQL Compilations/sec
-
-**T-SQL Query:**
-```sql
--- Watch CPU in real-time
-SELECT 
-    @@SERVERNAME AS Server,
-    sqlserver_start_time,
-    cpu_count,
-    (SELECT COUNT(*) FROM sys.dm_exec_requests WHERE status = 'running') AS ActiveQueries
-FROM sys.dm_os_sys_info;
-```
-
-## Emergency Contact Info
-
-**Script Issues:**
-- Check full README.md for detailed troubleshooting
-- Verify SQL Server connectivity first
-- Review error messages in PowerShell
-
-**SQL Server Issues:**
-- Contact your DBA team
-- Check SQL Server error log
-- Monitor Activity Monitor in SSMS
-
-## Important Numbers
-
-| Metric | Value |
-|--------|-------|
-| Max target CPU | 95% |
-| Max duration | 60 minutes |
-| Default target | 70% |
-| Default duration | 5 minutes |
-| Status update interval | 10 seconds |
-| Emergency stop check | 500 milliseconds |
-| Query duration | ~30 seconds per iteration |
-
-## File Locations
-
-| File | Purpose | Should Commit to Git? |
-|------|---------|----------------------|
-| `Stress-SqlCpu.ps1` | Main script | ✅ Yes |
-| `README.md` | Full documentation | ✅ Yes |
-| `QUICKSTART.md` | This file | ✅ Yes |
-| `STOP_SQL_STRESS.txt` | Emergency stop trigger | ❌ No (auto-created) |
-| `*.log` | Transcript logs | ❌ No (optional) |
-
-## Need More Help?
-
-📖 **Full Documentation:** See `README.md` for:
-- Detailed parameter explanations
-- Advanced usage examples
-- Comprehensive troubleshooting
-- Best practices and guidelines
-- Integration with monitoring systems
-
-💡 **Common Questions:**
-- "Is this safe?" → Yes, read-only with multiple failsafes
-- "Can I use in production?" → Yes, with approval and monitoring
-- "How accurate is it?" → Typically within ±5-10% of target
-- "Will it break anything?" → No, designed to be safe
-
-## Quick Tips
-
-💡 **Start Low:** Begin with 50-60% CPU to familiarize yourself  
-💡 **Monitor:** Always watch the test with SSMS Activity Monitor  
-💡 **Short Tests:** Start with 2-5 minutes, extend if needed  
-💡 **Off-Hours:** Run production tests during maintenance windows  
-💡 **Have Exit Plan:** Know how to stop before you start  
-💡 **Document:** Keep notes on what you're testing  
-
-## Version Info
-
-**Script Version:** 1.0  
-**PowerShell Required:** 5.1 or later  
-**SQL Server Supported:** 2012+  
-**Last Updated:** October 2025
+- **CPU Load Generator**: Read-only operations, uses tempdb by default
+- **Disk I/O Load Generator**: Creates temporary test files, automatically cleans up
+- Both tools include multiple safety mechanisms and automatic cleanup
+- Always test in non-production environments first
+- Monitor while running and be ready to stop if needed
 
 ---
 
-**⚡ Pro Tip:** Keep this quick reference open in another window while running the script!
+**⚡ Pro Tip:** Keep this quick reference open in another window while running the scripts!
 
 **🛡️ Safety First:** When in doubt, use lower targets and shorter durations. You can always run it again!
